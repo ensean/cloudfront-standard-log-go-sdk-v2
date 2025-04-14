@@ -1,0 +1,7 @@
+aws logs put-delivery-source --name S3-delivery --resource-arn arn:aws:cloudfront::123456789012:distribution/E1DOYPS2VYJZXX --log-type ACCESS_LOGS
+
+
+aws logs put-delivery-destination --name S3-destination --delivery-destination-configuration destinationResourceArn=arn:aws:s3:::cloudfrong-sdk-324256 --output-format parquet
+
+
+aws logs create-delivery --delivery-source-name S3-delivery --delivery-destination-arn arn:aws:logs:us-east-1:123456789012:delivery-destination:S3-destination --s3-delivery-configuration suffixPath="'{yyyy}/{MM}/{dd}/{HH}/'",enableHiveCompatiblePath=true
