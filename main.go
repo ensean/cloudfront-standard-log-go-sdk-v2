@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -41,9 +42,8 @@ func main() {
 	accountID := getAccountID(cfg)
 
 	// Step 1: Create delivery source (CloudFront distribution)
-	sourceName := "S3-delivery"
+	sourceName := fmt.Sprintf("CloudFront-%s", *distributionID)
 	distributionArn := fmt.Sprintf("arn:aws:cloudfront::%s:distribution/%s", accountID, *distributionID)
-	
 	sourceInput := &cloudwatchlogs.PutDeliverySourceInput{
 		Name:        aws.String(sourceName),
 		ResourceArn: aws.String(distributionArn),
@@ -54,10 +54,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create delivery source: %v", err)
 	}
-	fmt.Println("Successfully created delivery source")
+	fmt.Printf("Successfully created delivery source: %s\n", sourceName)
 
 	// Step 2: Create delivery destination (S3 bucket)
-	destinationName := "S3-destination"
+	destinationName := fmt.Sprintf("S3-destination-cloudfrontlogs-%s", *distributionID)
 	bucketArn := fmt.Sprintf("arn:aws:s3:::%s", *bucketName)
 	
 	destinationInput := &cloudwatchlogs.PutDeliveryDestinationInput{
@@ -65,14 +65,14 @@ func main() {
 		DeliveryDestinationConfiguration: &types.DeliveryDestinationConfiguration{
 			DestinationResourceArn: aws.String(bucketArn),
 		},
-		OutputFormat: types.OutputFormatParquet,
+		OutputFormat: types.OutputFormatPlain,
 	}
 	
 	_, err = logsClient.PutDeliveryDestination(context.TODO(), destinationInput)
 	if err != nil {
 		log.Fatalf("Failed to create delivery destination: %v", err)
 	}
-	fmt.Println("Successfully created delivery destination")
+	fmt.Printf("Successfully created delivery destination: %s\n", destinationName)
 
 	// Step 3: Create delivery (connect source to destination)
 	destinationArn := fmt.Sprintf("arn:aws:logs:%s:%s:delivery-destination:%s", 
@@ -85,9 +85,10 @@ func main() {
 		DeliveryDestinationArn: aws.String(destinationArn),
 		Tags: map[string]string{
 			"Service": "CloudFront",
+			"Created": time.Now().Format(time.RFC3339),
 		},
 		S3DeliveryConfiguration: &types.S3DeliveryConfiguration{
-			SuffixPath: aws.String("{DistributionId}/{yyyy}/{MM}/{dd}/{HH}/"),	// change the path as needed
+			SuffixPath:            aws.String("{DistributionId}/{yyyy}/{MM}/{dd}/{HH}/"),
 			EnableHiveCompatiblePath: aws.Bool(true),
 		},
 	}
@@ -101,6 +102,15 @@ func main() {
 	deliveryID := *deliveryResp.Delivery.Id
 	fmt.Printf("Successfully created delivery with ID: %s\n", deliveryID)
 	fmt.Println("CloudFront access logs v2 configured!")
+	
+	// Print summary for reference
+	fmt.Println("\nConfiguration Summary:")
+	fmt.Printf("- Distribution ID: %s\n", *distributionID)
+	fmt.Printf("- S3 Bucket: %s\n", *bucketName)
+	fmt.Printf("- Delivery Source: %s\n", sourceName)
+	fmt.Printf("- Delivery Destination: %s\n", destinationName)
+	fmt.Printf("- Delivery ID: %s\n", deliveryID)
+	fmt.Printf("- Region: %s\n", *region)
 }
 
 // Helper function to get AWS account ID using STS GetCallerIdentity

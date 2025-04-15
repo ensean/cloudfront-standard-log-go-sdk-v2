@@ -56,7 +56,7 @@ go run main.go --distribution-id=E1DOYPS2VYJZXX --bucket-name=cloudfrong-sdk-324
 
 ### create Athena table
 ```
-CREATE EXTERNAL TABLE `cloudfront_logs_parquet_pp`(
+CREATE EXTERNAL TABLE `cloudfront_logs`(
 `date` string, 
 `time` string, 
 `x_edge_location` string, 
@@ -95,24 +95,19 @@ PARTITIONED BY(
  month string,
  day string,
  hour string )
-ROW FORMAT SERDE 
-'org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe' 
-STORED AS INPUTFORMAT 
-'org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat' 
-OUTPUTFORMAT 
-'org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat'
-LOCATION
-'s3://cloudfront-sdk-logs-12345265/AWSLogs/aws-account-id=123456789012/CloudFront/DistributionId=E1DOYPS2VYJZXX/'
+ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t'
+LOCATION 's3://cloudfront-sdk-logs-12345265/AWSLogs/aws-account-id=123456789012/CloudFront/DistributionId=E1YJRG2ECJVHXX/'
+TBLPROPERTIES ("skip.header.line.count"="1")
 
 ```
 
 ### load partitions
 ```
-MSCK REPAIR TABLE `cloudfront_logs_parquet_pp`;
+MSCK REPAIR TABLE `cloudfront_logs`;
 
 ```
 
 ### Query data
 ```
-select count(*) FROM "default"."cloudfront_logs_parquet_pp" where year='2025' and month='04' and day='14' and hour='14'
+select count(*) FROM "default"."cloudfront_logs" where year='2025' and month='04' and day='14' and hour='14'
 ```
